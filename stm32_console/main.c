@@ -3,14 +3,10 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
-#include <sys/types.h>
 #include <fcntl.h>
 #include <termios.h>
 #include <unistd.h>
-#include <errno.h>
-#include <poll.h>
-#include <sys/select.h>
-#include <sys/ioctl.h>
+
 
 #define SERIAL_PORT "/dev/ttyUSB0" //à adapter
 
@@ -71,7 +67,7 @@ bool check_command(const char *command){
     };
     size_t len = sizeof(valid_command) / sizeof(valid_command[0]);
     for (size_t i = 0; i < len; i++) {
-        if (strcmp(command, valid_command[i])) return true;
+        if (strcmp(command, valid_command[i]) == 0) return true;
     }
     return false;
 }
@@ -115,7 +111,8 @@ int main(int argc, char **argv){
         }
 
         write_serial_port(fd, buffer, strlen(buffer));
-        close(fd);
-        return 0;
+        printf("Commande envoyé !");
     }
+    close(fd);
+    return 0;
 }
