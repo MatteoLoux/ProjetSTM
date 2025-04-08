@@ -91,12 +91,12 @@ int main(int argc, char **argv){
         buffer[strcspn(buffer, "\n")] = '\0';
 
         if (!check_command(buffer)){
-            printf("Commande invalide, Entrer 'help' pour afficher la liste des commandes");
+            printf("Commande invalide, Entrer 'help' pour afficher la liste des commandes\n");
             continue;
         }
 
         if (strlen(buffer) == 0){
-            printf("Aucune command rentrée");
+            printf("Aucune command rentrée\n");
             continue;
         }
 
@@ -111,7 +111,7 @@ int main(int argc, char **argv){
         }
 
         write_serial_port(fd, buffer, strlen(buffer));
-        printf("Commande envoyé !");
+        printf("Commande envoyé !\n");
     }
     close(fd);
     return 0;
