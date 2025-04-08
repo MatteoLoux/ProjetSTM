@@ -58,8 +58,22 @@ void print_interface(){
     printf("C / c / clear : efface le terminal\n");
 }
 
-bool check_command(){
-
+bool check_command(const char *command){
+    const char *valid_command[] = {
+        "LED1 ON", "LED1 OFF",
+        "LED2 ON", "LED2 OFF",
+        "LED3 ON", "LED3 OFF",
+        "CHENILLARD1 ON", "CHENILLARD1 OFF",
+        "CHENILLARD2 ON", "CHENILLARD2 OFF", 
+        "CHENILLARD3 ON", "CHENILLARD3 OFF",
+        "CHENILLARD FREQUENCE1",  "CHENILLARD FREQUENCE2",  "CHENILLARD FREQUENCE3",
+        "q", "Q", "quit", "h", "H", "help", "c", "C", "clean"  
+    };
+    size_t len = sizeof(valid_command) / sizeof(valid_command[0]);
+    for (size_t i = 0; i < len; i++) {
+        if (strcmp(command, valid_command[i])) return true;
+    }
+    return false;
 }
 
 int main(int argc, char **argv){
@@ -80,7 +94,15 @@ int main(int argc, char **argv){
         if (!fgets(buffer, sizeof(buffer), stdin)) break;
         buffer[strcspn(buffer, "\n")] = '\0';
 
-        if (strlen(buffer) == 0) continue;
+        if (!check_command(buffer)){
+            printf("Commande invalide, Entrer 'help' pour afficher la liste des commandes");
+            continue;
+        }
+
+        if (strlen(buffer) == 0){
+            printf("Aucune command rentrée");
+            continue;
+        }
 
         if (strcmp(buffer, "q") == 0 || strcmp(buffer, "Q") == 0 || strcmp(buffer, "quit") == 0) break;
         if (strcmp(buffer, "h") == 0 || strcmp(buffer, "H") == 0 || strcmp(buffer, "help") == 0){
