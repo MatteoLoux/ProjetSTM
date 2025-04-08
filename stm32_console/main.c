@@ -90,15 +90,17 @@ int main(int argc, char **argv){
         if (!fgets(buffer, sizeof(buffer), stdin)) break;
         buffer[strcspn(buffer, "\n")] = '\0';
 
+        if (strlen(buffer) == 0){
+            printf("Aucune command rentrée\n");
+            continue;
+        }
+
         if (!check_command(buffer)){
             printf("Commande invalide, Entrer 'help' pour afficher la liste des commandes\n");
             continue;
         }
 
-        if (strlen(buffer) == 0){
-            printf("Aucune command rentrée\n");
-            continue;
-        }
+        
 
         if (strcmp(buffer, "q") == 0 || strcmp(buffer, "Q") == 0 || strcmp(buffer, "quit") == 0) break;
         if (strcmp(buffer, "h") == 0 || strcmp(buffer, "H") == 0 || strcmp(buffer, "help") == 0){
