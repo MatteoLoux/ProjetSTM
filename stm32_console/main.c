@@ -6,9 +6,9 @@
 #include <fcntl.h>
 #include <termios.h>
 #include <unistd.h>
+#include <poll.h>
+#include <sys/ioctl.h>
 
-
-#define SERIAL_PORT "/dev/ttyUSB0" //à adapter
 
 int setup_serial(const char *port){
     int fd = open(port, O_RDWR | O_NOCTTY | O_NONBLOCK);
@@ -73,6 +73,9 @@ bool check_command(const char *command){
 }
 
 int main(int argc, char **argv){
+
+    bool led_state = false;
+
     if (argc < 2) {
         fprintf(stderr, "Usage : %s <serial_port>\n", argv[0]);
         return 1;
