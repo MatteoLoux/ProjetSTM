@@ -43,7 +43,15 @@ int write_serial_port(int fd, const char *data, size_t size){
     return write(fd, data, size);
 }
 
-
+void read_serial_port(int fd){
+    char buffer[256];
+    size_t len = read(fd, buffer, sizeof(buffer));
+    
+    if (len > 0){
+        buffer[len] = '\0';
+        printf("%s", buffer);
+    }
+}
 
 void print_interface(){
     printf("\nCommandes disponibles : \n");
@@ -88,39 +96,53 @@ int main(int argc, char **argv){
     int fd = setup_serial(argv[1]);
     if (fd < 0) return 1;
 
+    struct pollfd fds[2];
+    fds[0].fd = fd;
+    fds[0].events = POLLIN;
+    fds[1].fd = STDIN_FILENO;
+    fds[1].events = POLLIN;
+
     char buffer[256];
     print_interface();
     
     while(1){
-        printf("> ")
-        if (!fgets(buffer, sizeof(buffer), stdin)) break;
-        buffer[strcspn(buffer, "\n")] = '\0';
+        int ret = poll(fds, 2, 500);
+        if (ret > 0){
+            if (fds[0].events & POLLIN) {
+                read_serial_port(fd);
+            }  
 
-        if (strlen(buffer) == 0){
-            printf("Aucune command rentrée\n");
-            continue;
-        }
+            if (fds[1].events & POLLIN){
+                printf("> ");
+                
+                if (fgets(buffer, sizeof(buffer), stdin)){
+                    buffer[strcspn(buffer, "\n")] = '\0';
 
-        if (!check_command(buffer)){
-            printf("Commande invalide, Entrer 'help' pour afficher la liste des commandes\n");
-            continue;
+                    if (strlen(buffer) == 0){
+                        printf("Aucune command rentrée\n");
+                        continue;
+                    }
+                    if (!check_command(buffer)){
+                        printf("Commande invalide, Entrer 'help' pour afficher la liste des commandes\n");
+                        continue;
+                    }
+                    if (strcmp(buffer, "q") == 0 || strcmp(buffer, "Q") == 0 || strcmp(buffer, "quit") == 0) break;
+                    if (strcmp(buffer, "h") == 0 || strcmp(buffer, "H") == 0 || strcmp(buffer, "help") == 0){
+                        print_interface();
+                        continue;
+                    }
+                    if (strcmp(buffer, "c") == 0 || strcmp(buffer, "C") == 0 || strcmp(buffer, "clear") == 0){
+                        system("clear");
+                        continue;
+                    }
+            
+                    write_serial_port(fd, buffer, strlen(buffer));
+                    write(fd, "\n", 1);
+                    printf("Commande envoyé !\n");
+                }
+            }    
         }
-
-        
-
-        if (strcmp(buffer, "q") == 0 || strcmp(buffer, "Q") == 0 || strcmp(buffer, "quit") == 0) break;
-        if (strcmp(buffer, "h") == 0 || strcmp(buffer, "H") == 0 || strcmp(buffer, "help") == 0){
-            print_interface();
-            continue;
-        }
-        if (strcmp(buffer, "c") == 0 || strcmp(buffer, "C") == 0 || strcmp(buffer, "clear") == 0){
-            system("clear");
-            continue;
-        }
-
-        write_serial_port(fd, buffer, strlen(buffer));
-        printf("Commande envoyé !\n");
-        }
+    }
     close(fd);
     return 0;
 }
