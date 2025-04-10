@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 #include <sys/types.h>
 #include <fcntl.h>
 #include <termios.h>
@@ -47,12 +48,12 @@ int read_serial_input(int fd) {
     int len = 0;
     char buffer[256];
 
-    if(ioctl(fds.fd, FIONREAD, &bytes_read) == -1) {
+    if(ioctl(fd, FIONREAD, &bytes_read) == -1) {
         printf("Error getting bytes available");
         return 0;
     }
     printf("Bytes available: %d\n\r", bytes_read);
-    len = read(fds.fd, buffer, bytes_read);
+    len = read(fd, buffer, bytes_read);
 
     if (len > 0) {
         buffer[len] = '\0';
@@ -113,45 +114,55 @@ int main(int argc, char **argv){
     if (fd < 0) return 1;
     
     struct pollfd fds[2];
-    fds[0].fd = fd;
+    fds[0].fd = fd; //Lecture port série
     fds[0].events = POLLIN;
 
-    fds[1].fd = STDIN_FILENO;
+    fds[1].fd = STDIN_FILENO; //Lecture clavier
+    fds[1].events = POLLIN;
     
 
     char buffer[256];
     print_interface();
     
     while(1){
-        printf("> ");
+        int ret = poll(&fds, 2 , 500);
+        if (ret > 0) {
+            if (fds[0].revents & POLLIN) {
+                read_serial_input(fd);
+            }
+            if (fds[1].revents & POLLIN){
+                printf("> ");
         
-        if (!fgets(buffer, sizeof(buffer), stdin)) break;
-        buffer[strcspn(buffer, "\n")] = '\0';
-
-        if (strlen(buffer) == 0){
-            printf("Aucune command rentrée\n");
-            continue;
-        }
-
-        if (!check_command(buffer)){
-            printf("Commande invalide, Entrer 'help' pour afficher la liste des commandes\n");
-            continue;
-        }
-
+                if (!fgets(buffer, sizeof(buffer), stdin)) break;
+                buffer[strcspn(buffer, "\n")] = '\0';
         
-
-        if (strcmp(buffer, "q") == 0 || strcmp(buffer, "Q") == 0 || strcmp(buffer, "quit") == 0) break;
-        if (strcmp(buffer, "h") == 0 || strcmp(buffer, "H") == 0 || strcmp(buffer, "help") == 0){
-            print_interface();
-            continue;
+                if (strlen(buffer) == 0){
+                    printf("Aucune command rentrée\n");
+                    continue;
+                }
+        
+                if (!check_command(buffer)){
+                    printf("Commande invalide, Entrer 'help' pour afficher la liste des commandes\n");
+                    continue;
+                }
+        
+                
+        
+                if (strcmp(buffer, "q") == 0 || strcmp(buffer, "Q") == 0 || strcmp(buffer, "quit") == 0) break;
+                if (strcmp(buffer, "h") == 0 || strcmp(buffer, "H") == 0 || strcmp(buffer, "help") == 0){
+                    print_interface();
+                    continue;
+                }
+                if (strcmp(buffer, "c") == 0 || strcmp(buffer, "C") == 0 || strcmp(buffer, "clear") == 0){
+                    system("clear");
+                    continue;
+                }
+        
+                write_serial_port(fd, buffer, strlen(buffer));
+                printf("Commande envoyé !\n");
+            }
         }
-        if (strcmp(buffer, "c") == 0 || strcmp(buffer, "C") == 0 || strcmp(buffer, "clear") == 0){
-            system("clear");
-            continue;
-        }
 
-        write_serial_port(fd, buffer, strlen(buffer));
-        printf("Commande envoyé !\n");
     }
     close(fd);
     return 0;
