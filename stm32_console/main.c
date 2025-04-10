@@ -45,11 +45,11 @@ int write_serial_port(int fd, const char *data, size_t size){
 
 void read_serial_port(int fd){
     char buffer[256];
-    size_t len = read(fd, buffer, sizeof(buffer));
-    
-    if (len > 0){
+    size_t len;
+    while(len = read(fd, buffer, sizeof(buffer)) > 0){
         buffer[len] = '\0';
         printf("%s", buffer);
+        fflush(stdout);
     }
 }
 
@@ -62,9 +62,9 @@ void print_interface(){
     printf(" CHENILLARD2 ON / OFF\n");
     printf(" CHENILLARD3 ON / OFF\n");
     printf(" CHENILLARD FREQUENCE1 / FREQUENCE2 / FREQUENCE3\n");
-    printf("Q / q / quit : Quitter l'application\n");
-    printf("H / h / help : Afficher la liste des commandes\n");
-    printf("C / c / clear : efface le terminal\n");
+    printf(" Q / q / quit : Quitter l'application\n");
+    printf(" H / h / help : Afficher la liste des commandes\n");
+    printf(" C / c / clear : efface le terminal\n");
 }
 
 bool check_command(const char *command){
@@ -93,54 +93,40 @@ int main(int argc, char **argv){
         return 1;
     }
 
+    bool chenillard_state = false;
     int fd = setup_serial(argv[1]);
     if (fd < 0) return 1;
-
-    struct pollfd fds[2];
-    fds[0].fd = fd;
-    fds[0].events = POLLIN;
-    fds[1].fd = STDIN_FILENO;
-    fds[1].events = POLLIN;
 
     char buffer[256];
     print_interface();
     
     while(1){
-        int ret = poll(fds, 2, 1000);
-        if (ret > 0){
-            if (fds[0].revents & POLLIN) {
-                read_serial_port(fd);
-            }  
+        if (!fgets(buffer, sizeof(buffer), stdin)) break;
+        buffer[strcspn(buffer, "\n")] = '\0';
 
-            if (fds[1].revents & POLLIN){
-                if (fgets(buffer, sizeof(buffer), stdin)){
-                    buffer[strcspn(buffer, "\n")] = '\0';
-
-                    if (strlen(buffer) == 0){
-                        printf("Aucune command rentrée\n");
-                        continue;
-                    }
-                    if (!check_command(buffer)){
-                        printf("Commande invalide, Entrer 'help' pour afficher la liste des commandes\n");
-                        continue;
-                    }
-                    if (strcmp(buffer, "q") == 0 || strcmp(buffer, "Q") == 0 || strcmp(buffer, "quit") == 0) break;
-                    if (strcmp(buffer, "h") == 0 || strcmp(buffer, "H") == 0 || strcmp(buffer, "help") == 0){
-                        print_interface();
-                        continue;
-                    }
-                    if (strcmp(buffer, "c") == 0 || strcmp(buffer, "C") == 0 || strcmp(buffer, "clear") == 0){
-                        system("clear");
-                        continue;
-                    }
-            
-                    write_serial_port(fd, buffer, strlen(buffer));
-                    write(fd, "\n", 1);
-                    printf("Commande envoyé !\n");
-                }
-            }    
+        if (strlen(buffer) == 0){
+            printf("Aucune command rentrée\n");
+            continue;
         }
+        if (!check_command(buffer)){
+            printf("Commande invalide, Entrer 'help' pour afficher la liste des commandes\n");
+            continue;
+        }
+        if (strcmp(buffer, "q") == 0 || strcmp(buffer, "Q") == 0 || strcmp(buffer, "quit") == 0) break;
+        if (strcmp(buffer, "h") == 0 || strcmp(buffer, "H") == 0 || strcmp(buffer, "help") == 0){
+            print_interface();
+            continue;
+        }
+        if (strcmp(buffer, "c") == 0 || strcmp(buffer, "C") == 0 || strcmp(buffer, "clear") == 0){
+            system("clear");
+            continue;
+        }
+            
+        write_serial_port(fd, buffer, strlen(buffer));
+        write(fd, "\n", 1);
+        printf("Commande envoyé !\n");
     }
+
     close(fd);
     return 0;
 }
