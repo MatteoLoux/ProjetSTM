@@ -44,29 +44,19 @@ int write_serial_port(int fd, const char *data, size_t size){
 }
 
 int read_serial_input(int fd) {
-    int bytes_read = 0;
-    int len = 0;
     char buffer[256];
-
-    if(ioctl(fd, FIONREAD, &bytes_read) == -1) {
-        printf("Error getting bytes available");
-        return 0;
-    }
-    printf("Bytes available: %d\n\r", bytes_read);
-    len = read(fd, buffer, bytes_read);
+    ssize_t len = read(fd, buffer, sizeof(buffer) - 1);
 
     if (len > 0) {
-        buffer[len] = '\0';
-        printf("Received: %s %d\r\n", buffer, len);
-        memset(buffer, 0, sizeof(buffer)); 
+        buffer[len] = '\0'; // Assurez-vous que la chaîne est terminée
+        printf("Reçu : %s\n", buffer);
+        return 1;
     } else if (len == 0) {
-        printf("No data received\n\r");
         return 0;
     } else {
-        printf("Error reading from serial port\n\r");
-        return 0;
+        perror("Erreur lors de la lecture du port série");
+        return -1;
     }
-    return 1;
 }
 
 void print_interface(){
@@ -101,9 +91,8 @@ bool check_command(const char *command){
     return false;
 }
 
-int main(int argc, char **argv){
 
-    bool led_state = false;
+int main(int argc, char **argv){
 
     if (argc < 2) {
         fprintf(stderr, "Usage : %s <serial_port>\n", argv[0]);
