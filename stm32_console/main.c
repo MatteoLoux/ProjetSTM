@@ -92,7 +92,7 @@ bool check_command(const char *command){
         "CHENILLARD2 ON", "CHENILLARD2 OFF", 
         "CHENILLARD3 ON", "CHENILLARD3 OFF",
         "CHENILLARD FREQUENCE1",  "CHENILLARD FREQUENCE2",  "CHENILLARD FREQUENCE3",
-        "q", "Q", "quit", "h", "H", "help", "c", "C", "clean"  
+        "q", "Q", "quit", "h", "H", "help", "c", "C", "clear"  
     };
     size_t len = sizeof(valid_command) / sizeof(valid_command[0]);
     for (size_t i = 0; i < len; i++) {
@@ -161,6 +161,8 @@ int main(int argc, char **argv){
                 write_serial_port(fd, buffer, strlen(buffer));
                 printf("Commande envoyé !\n");
             }
+        } else if (ret == 0){
+            
         }
 
     }
