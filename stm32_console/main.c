@@ -1,12 +1,14 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <string.h>
+#include <sys/types.h>
 #include <fcntl.h>
 #include <termios.h>
 #include <unistd.h>
+#include <errno.h>
 #include <poll.h>
+#include <sys/select.h>
 #include <sys/ioctl.h>
 
 
@@ -38,6 +40,32 @@ int setup_serial(const char *port){
 
 int write_serial_port(int fd, const char *data, size_t size){
     return write(fd, data, size);
+}
+
+int read_serial_input(int fd) {
+    int bytes_read = 0;
+    int len = 0;
+    char buffer[256];
+
+    if(ioctl(fds.fd, FIONREAD, &bytes_read) == -1) {
+        printf("Error getting bytes available");
+        return 0;
+    }
+    printf("Bytes available: %d\n\r", bytes_read);
+    len = read(fds.fd, buffer, bytes_read);
+
+    if (len > 0) {
+        buffer[len] = '\0';
+        printf("Received: %s %d\r\n", buffer, len);
+        memset(buffer, 0, sizeof(buffer)); 
+    } else if (len == 0) {
+        printf("No data received\n\r");
+        return 0;
+    } else {
+        printf("Error reading from serial port\n\r");
+        return 0;
+    }
+    return 1;
 }
 
 void print_interface(){
@@ -83,6 +111,13 @@ int main(int argc, char **argv){
 
     int fd = setup_serial(argv[1]);
     if (fd < 0) return 1;
+    
+    struct pollfd fds[2];
+    fds[0].fd = fd;
+    fds[0].events = POLLIN;
+
+    fds[1].fd = STDIN_FILENO;
+    
 
     char buffer[256];
     print_interface();
