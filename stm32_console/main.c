@@ -106,15 +106,13 @@ int main(int argc, char **argv){
     print_interface();
     
     while(1){
-        int ret = poll(fds, 2, 500);
+        int ret = poll(fds, 2, 1000);
         if (ret > 0){
-            if (fds[0].events & POLLIN) {
+            if (fds[0].revents & POLLIN) {
                 read_serial_port(fd);
             }  
 
-            if (fds[1].events & POLLIN){
-                printf("> ");
-                
+            if (fds[1].revents & POLLIN){
                 if (fgets(buffer, sizeof(buffer), stdin)){
                     buffer[strcspn(buffer, "\n")] = '\0';
 
