@@ -114,7 +114,7 @@ int main(int argc, char **argv){
     print_interface();
     
     while(1){
-        int ret = poll(&fds, 2 , 500);
+        int ret = poll(fds, 2 , 500);
         if (ret > 0) {
             if (fds[0].revents & POLLIN) {
                 read_serial_input(fd);
