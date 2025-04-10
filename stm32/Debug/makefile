@@ -60,8 +60,8 @@ all: main-build
 main-build: PartieNoah.elf secondary-outputs
 
 # Tool invocations
-PartieNoah.elf PartieNoah.map: $(OBJS) $(USER_OBJS) C:\Users\nsanchezhernandez\Desktop\ProjetSTM\stm32\STM32F756ZGTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "PartieNoah.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m7 -T"C:\Users\nsanchezhernandez\Desktop\ProjetSTM\stm32\STM32F756ZGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="PartieNoah.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+PartieNoah.elf PartieNoah.map: $(OBJS) $(USER_OBJS) C:\cours\B1.2\Projet\ 6\ Reverse\ProjetSTM\stm32\STM32F756ZGTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "PartieNoah.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m7 -T"C:\cours\B1.2\Projet 6 Reverse\ProjetSTM\stm32\STM32F756ZGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="PartieNoah.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

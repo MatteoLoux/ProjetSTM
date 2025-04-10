@@ -36,22 +36,34 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#ifdef __GNUC__
+#define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
+#else
+#define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
+#endif /* __GNUC__ */
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-
+PUTCHAR_PROTOTYPE
+{
+    HAL_UART_Transmit(&huart3, (uint8_t *)&ch, 1, 0xFFFF);
+    return ch;
+}
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-volatile uint8_t var = 0;
-volatile uint8_t chenillard_actif = 0;
-volatile uint8_t current_pattern = 0;
-volatile uint8_t current_frequency = 1; // 1 = TIM1, 2 = TIM2, 3 = TIM3
-volatile uint8_t step = 0;
+bool chenillard_actif = false;
+uint8_t current_pattern = 1;
+uint8_t current_frequency = 1; // 1 = TIM1, 2 = TIM2, 3 = TIM3
+
+const uint16_t leds[3] = {GPIO_PIN_0, GPIO_PIN_7, GPIO_PIN_14};
+
+char rx_buffer[256];
+char *ptr = rx_buffer;
+uint8_t ch;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -70,12 +82,8 @@ static void MPU_Config(void);
   * @brief  The application entry point.
   * @retval int
   */
-char uart_buffer[50];
-uint8_t rx_index = 0;
 int main(void)
 {
-	HAL_UART_Receive_IT(&huart3, (uint8_t *)&uart_buffer[rx_index++], 1); // Demande la réception par interruption
-
 
   /* USER CODE BEGIN 1 */
 
@@ -107,78 +115,13 @@ int main(void)
   MX_TIM3_Init();
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
-
+  HAL_UART_Receive_IT(&huart3, &ch, 1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  char c;
-  char tableau[100];
-  size_t compteur = 0;
-  char erreur[] = "\n\rValeur invalide\r\n";
-  char on[]="\n\rLED allumée\r\n";
-  char off[]="\n\rLED éteinte\r\n";
   while (1)
   {
-	  if (uart_buffer[rx_index - 1] == '\n') {
-	         uart_buffer[rx_index - 1] = '\0'; // Remplace \n par \0 pour traiter comme une chaîne
-	         traiter_commande_uart(uart_buffer); // Fonction qui traite la commande
-	         memset(uart_buffer, 0, sizeof(uart_buffer)); // Réinitialise le buffer UART
-	         rx_index = 0; // Réinitialise l'indice du buffer pour une nouvelle commande
-	     }
-
-	  if (HAL_UART_Receive(&huart3, (uint8_t*)&c, 1, HAL_MAX_DELAY) == HAL_OK){
-		  if (c == '\r'){
-		  	tableau[compteur] = '\0';
-		  	if (strcmp(tableau,"LED 1 ON") == 0){
-		  		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, SET);
-		  		 memset(tableau, 0, sizeof(tableau));
-		  		 compteur = 0;
-		  		 HAL_UART_Transmit(&huart3, (uint8_t*)on, strlen(on), HAL_MAX_DELAY);
-		  		}
-		  	else if(strcmp(tableau,"LED 1 OFF") == 0){
-		  		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, RESET);
-		  		memset(tableau, 0, sizeof(tableau));
-		  		compteur = 0;
-		  		HAL_UART_Transmit(&huart3, (uint8_t*)off, strlen(off), HAL_MAX_DELAY);
-		  		}
-			else if(strcmp(tableau,"LED 2 ON") == 0){
-				  		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, SET);
-				  		memset(tableau, 0, sizeof(tableau));
-				  		compteur = 0;
-				  		HAL_UART_Transmit(&huart3, (uint8_t*)on, strlen(on), HAL_MAX_DELAY);
-				  		}
-			else if(strcmp(tableau,"LED 2 OFF") == 0){
-				  		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, RESET);
-				  		memset(tableau, 0, sizeof(tableau));
-				  		compteur = 0;
-				  		HAL_UART_Transmit(&huart3, (uint8_t*)off, strlen(off), HAL_MAX_DELAY);
-				  		}
-			else if(strcmp(tableau,"LED 3 ON") == 0){
-							  		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, SET);
-							  		memset(tableau, 0, sizeof(tableau));
-							  		compteur = 0;
-							  		HAL_UART_Transmit(&huart3, (uint8_t*)on, strlen(on), HAL_MAX_DELAY);
-							  		}
-			else if(strcmp(tableau,"LED 3 OFF") == 0){
-							  		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, RESET);
-							  		memset(tableau, 0, sizeof(tableau));
-							  		compteur = 0;
-							  		HAL_UART_Transmit(&huart3, (uint8_t*)off, strlen(off), HAL_MAX_DELAY);
-							  		}
-		  	else{
-		  		HAL_UART_Transmit(&huart3, (uint8_t*)erreur, strlen(erreur), HAL_MAX_DELAY);
-		  		memset(tableau, 0, sizeof(tableau));
-		  		compteur = 0;
-		  		}
-
-		 }
-		  else{
-		  	tableau[compteur] = c;
-		  	HAL_UART_Transmit(&huart3, (uint8_t*)&c, 1, HAL_MAX_DELAY);
-		  	compteur++;
-		  		  }
-	  }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -228,119 +171,134 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-uint16_t leds[3] = {GPIO_PIN_0, GPIO_PIN_7, GPIO_PIN_14};
-GPIO_TypeDef* led_port = GPIOA;
 
-void start_timer(uint8_t freq)
-{
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
+        if (!chenillard_actif) return;
+        switch (current_pattern){
+        	case 1:
+        		chenillard_classique();
+        		break;
+        	case 2:
+        		chenillard_int_ext();
+        		break;
+        	case 3:
+        		chenillard_on_off();
+        		break;
+        }
+}
+
+void chenillard_classique(){
+	static int i = 0;
+	static int direction = 1;
+
+	reset_led();
+	HAL_GPIO_WritePin(GPIOB, leds[i], GPIO_PIN_SET);
+	if (direction) {
+		i++;
+		if (i >= 2) {
+			direction = false;
+		}
+	} else {
+	    i--;
+	    if (i <= 0) {
+	    	direction = true;
+	    }
+	}
+}
+
+void chenillard_int_ext(){
+	static uint8_t state = 1;
+	reset_led();
+	if (state){
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_SET);
+	} else {
+        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_SET);
+    }
+	state = !state;
+}
+
+void chenillard_on_off(){
+	for (uint8_t i = 0; i < 3; i++){
+		HAL_GPIO_TogglePin(GPIOB, leds[i]);
+	}
+}
+
+void set_chenillard_frequency(uint8_t freq) {
     HAL_TIM_Base_Stop_IT(&htim1);
     HAL_TIM_Base_Stop_IT(&htim3);
     HAL_TIM_Base_Stop_IT(&htim4);
 
+    current_frequency = freq;
+
     switch(freq) {
         case 1:
-            HAL_TIM_Base_Start_IT(&htim1);
-            break;
+        	HAL_TIM_Base_Start_IT(&htim1);
+        	break;
         case 2:
-            HAL_TIM_Base_Start_IT(&htim3);
-            break;
+        	HAL_TIM_Base_Start_IT(&htim3);
+        	break;
         case 3:
-            HAL_TIM_Base_Start_IT(&htim4);
-            break;
+        	HAL_TIM_Base_Start_IT(&htim4);
+        	break;
     }
-    void executer_pattern(uint8_t pattern)
-    {
-        // Éteindre toutes les LEDs
-        for (int i = 0; i < 3; i++) {
-            HAL_GPIO_WritePin(led_port, leds[i], GPIO_PIN_RESET);
-        }
+}
 
-        switch(pattern) {
-            case 1:
-                // Pattern 1 : défilement gauche → droite
-                HAL_GPIO_WritePin(led_port, leds[step], GPIO_PIN_SET);
-                step = (step + 1) % 3;
-                break;
 
-            case 2:
-                // Pattern 2 : alternance centre / côtés
-                if (step % 2 == 0) {
-                    // Allume centre seul
-                    HAL_GPIO_WritePin(led_port, leds[1], GPIO_PIN_SET);
-                } else {
-                    // Allume les deux extrémités
-                    HAL_GPIO_WritePin(led_port, leds[0], GPIO_PIN_SET);
-                    HAL_GPIO_WritePin(led_port, leds[2], GPIO_PIN_SET);
-                }
-                step++;
-                break;
+void reset_led(){
+	for (uint8_t i = 0; i < 3; i++){
+		HAL_GPIO_WritePin(GPIOB, leds[i], GPIO_PIN_RESET);
+	}
+}
 
-            case 3:
- // Pattern 3 : Toutes les LEDs s'allument puis s'éteignent
-                if (step % 2 == 0) {
-                    // Étape paire : toutes allumées
-                    for (int i = 0; i < 3; i++) {
-                        HAL_GPIO_WritePin(led_port, leds[i], GPIO_PIN_SET);
-                    }
-                } else {
-                    // Étape impaire : toutes éteintes (déjà éteintes en début de fonction)
-                    // Donc rien à faire ici
-                }
-                step++;
-                break;
-        }
-    }
-    void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-    {
-        if (!chenillard_actif) return;
+void led_on_off(){
+	char last = rx_buffer[strlen(rx_buffer)-1];
+	if (last == 'F') { //LED OFF
+		HAL_GPIO_WritePin(GPIOB, leds[(int)(rx_buffer[3] - '0')-1], GPIO_PIN_RESET);
+	} else if (last == 'N'){//LED ON
+		HAL_GPIO_WritePin(GPIOB, leds[(int)(rx_buffer[3] - '0')-1], GPIO_PIN_SET);
+	}
+}
 
-        if ((current_frequency == 1 && htim->Instance == TIM1) ||
-            (current_frequency == 2 && htim->Instance == TIM3) ||
-            (current_frequency == 3 && htim->Instance == TIM4)) {
-            executer_pattern(current_pattern);
-        }
-    }
-    void traiter_commande_uart(char *commande)
-    {
-        if (strstr(commande, "CHENILLARD1 ON")) {
-            chenillard_actif = 1;
-            current_pattern = 1;
-            step = 0;
-            start_timer(current_frequency);
-        } else if (strstr(commande, "CHENILLARD2 ON")) {
-            chenillard_actif = 1;
-            current_pattern = 2;
-            step = 0;
-            start_timer(current_frequency);
-        } else if (strstr(commande, "CHENILLARD3 ON")) {
-            chenillard_actif = 1;
-            current_pattern = 3;
-            step = 0;
-            start_timer(current_frequency);
-        } else if (strstr(commande, "CHENILLARD OFF")) {
-            chenillard_actif = 0;
-            HAL_TIM_Base_Stop_IT(&htim1);
-            HAL_TIM_Base_Stop_IT(&htim3);
-            HAL_TIM_Base_Stop_IT(&htim4);
-            for (int i = 0; i < 3; i++) {
-                HAL_GPIO_WritePin(led_port, leds[i], GPIO_PIN_RESET);
-            }
-        } else if (strstr(commande, "CHENILLARD FREQUENCE1")) {
-            current_frequency = 1;
-            if (chenillard_actif) start_timer(current_frequency);
-        } else if (strstr(commande, "CHENILLARD FREQUENCE2")) {
-            current_frequency = 2;
-            if (chenillard_actif) start_timer(current_frequency);
-        } else if (strstr(commande, "CHENILLARD FREQUENCE3")) {
-            current_frequency = 3;
-            if (chenillard_actif) start_timer(current_frequency);
-        }
+void manage_chenillard(){
+	char last = rx_buffer[strlen(rx_buffer) - 1];
+	if ( last == 'N'){
+		reset_led();
+		current_pattern = rx_buffer[10] - '0';
+		chenillard_actif = true;
+		set_chenillard_frequency(current_frequency);
+	} else if(last == 'F'){
+		if(rx_buffer[10] - '0' == current_pattern){
+			chenillard_actif = false;
+			reset_led();
+		}
+	}
+}
 
-        // Réarmer la réception UART
-        rx_index = 0;
-        HAL_UART_Receive_IT(&huart3, (uint8_t *)&uart_buffer[rx_index++], 1);
-    }
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
+	 if (huart->Instance == USART3) {
+		 if (ch == '\r' || ch == '\n') {
+			 *ptr = '\0';
 
+			 if (rx_buffer[0] == 'L'){ //Controle des LED
+				 if (chenillard_actif){
+					 printf("LED Control OFF, disable chenillard first\r\n");
+				 }
+				 led_on_off();
+			 } else if (strncmp(rx_buffer, "CHENILLARD FREQUENCE", 20) == 0){ //Frequence
+				 set_chenillard_frequency((uint8_t)(rx_buffer[strlen(rx_buffer)-1] - '0'));
+			 } else if (strncmp(rx_buffer, "CHENILLARD", 10) == 0) { //Chenillard
+				 manage_chenillard();
+			 }
+			 memset(rx_buffer, 0, strlen(rx_buffer));
+			 ptr = rx_buffer;
+		 } else {
+	         *ptr = ch;
+	         ptr++;
+		 }
+	     HAL_UART_Receive_IT(&huart3, (uint8_t *)&ch, 1);
+	 }
 }
 /* USER CODE END 4 */
 
