@@ -1,5 +1,6 @@
 import serial
 import os
+import sys
 
 valid_command = {
     "LED1 ON", "LED1 OFF",
@@ -29,8 +30,8 @@ def print_interface():
 def check_command(command):
     return command in valid_command
 
-def main(port):
-    serial_port = serial.Serial(port, 115200)
+def main():
+    serial_port = serial.Serial(sys.argv[1], 115200)
     print_interface()
     while True:
 
@@ -57,3 +58,6 @@ def main(port):
         print("Commande envoyée !")
 
     serial_port.close()
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,1 @@
+/usr/bin/cc CMakeFiles/console_stm.dir/main.c.o -o console_stm 

@@ -45,10 +45,10 @@ int write_serial_port(int fd, const char *data, size_t size){
 
 void read_serial_port(int fd){
     char buffer[256];
-    int len = read(fd, buffer, sizeof(buffer));
-    while(len > 0){
+    size_t len = read(fd, buffer, sizeof(buffer));
+    if (len  > 0){
         buffer[len] = '\0';
-        printf("%s\r\n", buffer);
+        printf("%s\n", buffer);
     }
 }
 
@@ -100,7 +100,6 @@ int main(int argc, char **argv){
     print_interface();
     
     while(1){
-        read_serial_port(fd);
         if (!fgets(buffer, sizeof(buffer), stdin)) break;
         buffer[strcspn(buffer, "\n")] = '\0';
 
